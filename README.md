@@ -1,3 +1,18 @@
+```groovy
+import groovy.io.FileType
+import groovy.io.FileVisitResult
+def dir = new File("C:\\local\\work\\gradle");
+final excludedDirs = ['.svn', '.git', '.hg', '.idea', 'node_modules', '.gradle', 'build']
+
+dir.traverse(
+        type         : FileType.FILES,
+        nameFilter   : 'build.gradle',
+        preDir       : { if (excludedDirs.contains(it.name)) return FileVisitResult.SKIP_SUBTREE }
+) {it ->
+println it.getAbsoluteFile().getParent().tokenize('\\')[-1]
+println it.dump(); FileVisitResult.TERMINATE }
+```
+
 ## Windows Code Signing
 
 ## Why should we code sign?
