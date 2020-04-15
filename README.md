@@ -47,3 +47,21 @@ Pretty much any type that support [SIP (subject interface package)](https://bit.
 ## Refs
 - [SIP (Subject Interface Packages)](https://vcsjones.dev/2017/08/10/subject-interface-packages)
 - [Best Practice](https://docs.microsoft.com/en-us/previous-versions/windows/hardware/design/dn653556(v=vs.85))
+
+
+```bash
+# cert store
+certmgr.msc
+
+# Create certificate:
+$cert = New-SelfSignedCertificate -DnsName some@local.com -Type CodeSigning -CertStoreLocation Cert:\CurrentUser\My
+
+# set the password for it:
+$CertPassword = ConvertTo-SecureString -String "password123" -Force –AsPlainText
+
+# export
+Export-PfxCertificate -Cert "cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath "c:\tmp\codesign\selfsigncert.pfx" -Password $CertPassword
+
+$env:Path = "C:\Program Files (x86)\Microsoft SDKs\ClickOnce\SignTool;"+$env:Path
+signtool.exe sign /f "c:\tmp\codesign\selfsigncert.pfx" /p "password123" /v "C:\tmp\codesign\HelloWorld.dll"
+```
