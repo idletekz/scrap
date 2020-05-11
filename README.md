@@ -80,3 +80,5 @@ Export-PfxCertificate -Cert "cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath
 $env:Path = "C:\Program Files (x86)\Microsoft SDKs\ClickOnce\SignTool;"+$env:Path
 signtool.exe sign /f "c:\tmp\codesign\selfsigncert.pfx" /p "password123" /v "C:\tmp\codesign\HelloWorld.dll"
 ```
+
+powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File post-build.ps1

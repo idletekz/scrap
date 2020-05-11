@@ -1,30 +1,39 @@
-apiVersion: v1 
-kind: Pod 
-metadata: 
-    name: dind 
-spec: 
-    containers: 
-      - name: docker-cmds 
-        image: docker:1.12.6 
-        command: ['sh', '-c', "echo $(POD_IP) && sleep 3600"] 
-        resources: 
-            requests: 
-                cpu: 10m 
-                memory: 256Mi 
-        env: 
-          - name: DOCKER_HOST 
-            value: tcp://localhost:2375 
-      - name: dind-daemon 
-        image: docker:1.12.6-dind 
-        resources: 
-            requests: 
-                cpu: 20m 
-                memory: 512Mi 
-        securityContext: 
-            privileged: true 
-        volumeMounts: 
-          - name: dind-storage
-            mountPath: /var/lib/docker 
-    volumes: 
-      - name: dind-storage
-        emptyDir: {}
+pipeline {
+  agent {
+    kubernetes {
+      //cloud 'kubernetes'
+      defaultContainer 'kaniko'
+      yaml """
+kind: Pod
+spec:
+  containers:
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:debug-539ddefcae3fd6b411a95982a830d987f4214251
+    imagePullPolicy: Always
+    command:
+    - /busybox/cat
+    tty: true
+    volumeMounts:
+      - name: jenkins-docker-cfg
+        mountPath: /kaniko/.docker
+  volumes:
+  - name: jenkins-docker-cfg
+    projected:
+      sources:
+      - secret:
+          name: regcred
+          items:
+            - key: .dockerconfigjson
+              path: config.json
+"""
+    }
+  }
+  stages {
+    stage('Build with Kaniko') {
+      steps {
+        git 'https://github.com/jenkinsci/docker-jnlp-slave.git'
+        sh '/kaniko/executor -f `pwd`/Dockerfile -c `pwd` --insecure --skip-tls-verify --cache=true --tar-path=/dev/null'
+      }
+    }
+  }
+}
