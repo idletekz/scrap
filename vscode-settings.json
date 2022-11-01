@@ -1,0 +1,47 @@
+{
+  "vim.leader": "<Space>",
+  "editor.tabSize": 2,
+  "go.toolsManagement.autoUpdate": true,
+  "gopls": {
+    "ui.semanticTokens": true
+  },
+  "explorer.confirmDragAndDrop": false,
+  "editor.fontSize": 14,
+  "vim.normalModeKeyBindingsNonRecursive": [
+    {
+      "before": [
+        "<C-w>"
+      ],
+      "commands": [
+        "workbench.action.closeActiveEditor"
+      ],
+    },
+    {
+      "before": ["J"],
+      "after": ["5", "j"]
+    },
+    {
+      "before": ["K"],
+      "after": ["5", "k"]
+    },
+    {
+      "before": ["<Leader>", "j"],
+      "after": ["J"]
+    },
+  ],
+  "vim.insertModeKeyBindingsNonRecursive": [
+    {
+      "before": [
+        "j",
+        "k"
+      ],
+      "after": [
+        "<ESC>"
+      ]
+    }
+  ],
+  "vim.useSystemClipboard": true,
+  "vim.foldfix": true,
+  "workbench.colorTheme": "Nord",
+  "vim.sneak": false,
+}
