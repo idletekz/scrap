@@ -1,13 +1,28 @@
-function update_key_if_exists() {
-  local key_path="$1"
-  local new_value="$2"
-  local input_file="$3"
-# This command will return the contents of the input YAML file if the key exists. If the key does not exist, the command will return nothing.
-  result=$(yq "select(.$key_path != null)" "$input_file")
-  if [ -n "$result" ]; then
-    yq -i ".$key_path=\"$new_value\"" "$input_file"
-    echo "Key '$key_path' updated"
-  else
-    echo "Key '$key_path' not found in the file."
-  fi
+indent_content() {
+    local indent="        "  # 8 spaces for indentation
+    local content="$1"
+
+    # Indent each line by adding the indent string at the beginning
+    local indented_content=$(echo "$content" | sed "s/^/$indent/")
+
+    echo "$indented_content"
 }
+
+# Example usage
+content=$(cat <<-EOF
+echo "running below scripts"
+i=0;
+while true;
+do
+  echo "\$i: \$(date)";
+  i=\$((i+1));
+  sleep 1;
+done
+EOF
+)
+
+# Indent the content using the indent_content function
+indented_content=$(indent_content "$content")
+
+# Print the indented content
+echo "$indented_content"
