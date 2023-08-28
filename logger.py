@@ -26,7 +26,9 @@ def new_logger(name=None):
     console_handler.setLevel(logging.DEBUG)
     console_handler.setFormatter(formatter)
 
-    logger.addHandler(console_handler)
+    # Ensure that multiple handlers are not added
+    if not logger.handlers:
+        logger.addHandler(console_handler)
 
     return logger
 
