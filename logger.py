@@ -19,7 +19,7 @@ def new_logger(name=None):
             'ERROR': 'red',
             'CRITICAL': 'red,bg_white',
         },
-        style='{'
+        style='{' # new format string style {} vs old style % 
     )
 
     console_handler = colorlog.StreamHandler()
@@ -32,10 +32,12 @@ def new_logger(name=None):
 
     return logger
 
-class SampleClass:
+class Client:
     def __init__(self):
         # Initialize logger for the class
         self.logger = new_logger(self.__class__.__name__)
+    def a_method(self):
+        self.logger.info("a method called")
 
     def sample_method(self, value):
         if value > 10:
@@ -52,13 +54,16 @@ class SampleClass:
             self.logger.error("Tried to divide by zero!")
 
 def main():
-    sample = SampleClass()
+    sample = Client()
+    sample.a_method()
     sample.sample_method(5)
     sample.sample_method(10)
     sample.sample_method(15)
     sample.another_method()
     logger = new_logger()
     logger.info("root logger")
+    logger.error("this is an error")
+    logger.exception("ooo NO~!!")
 
 if __name__ == "__main__":
     main()
