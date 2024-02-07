@@ -1,51 +1,28 @@
-indent_content() {
-    local indent="        "  # 8 spaces for indentation
-    local content="$1"
+#!/bin/bash
 
-    # Indent each line by adding the indent string at the beginning
-    local indented_content=$(echo "$content" | sed "s/^/$indent/")
+# Initialize an empty JSON object
+json_result="{"
 
-    echo "$indented_content"
-}
-
-# Example usage
-content=$(cat <<-EOF
-echo "running below scripts"
-i=0;
-while true;
+# Loop through each argument passed to the script
+for arg in "$@"
 do
-  echo "\$i: \$(date)";
-  i=\$((i+1));
-  sleep 1;
+  # Split the argument into key and value based on the '=' delimiter
+  key=$(echo $arg | cut -f1 -d=)
+  value=$(echo $arg | cut -f2 -d=)
+
+  # Remove leading '--' from the key
+  key=${key//--/}
+
+  # Append the key-value pair to the JSON object
+  # Also, add comma before adding a key-value pair if the JSON object is not empty
+  if [ ${#json_result} -gt 1 ]; then
+    json_result+=", "
+  fi
+  json_result+="\"$key\": \"$value\""
 done
-EOF
-)
 
-# Indent the content using the indent_content function
-indented_content=$(indent_content "$content")
+# Close the JSON object
+json_result+="}"
 
-# Print the indented content
-echo "$indented_content"
-
-
-import yaml
-
-def text_to_yaml(filename):
-    # Read the content from the text file
-    with open(filename, 'r') as f:
-        lines = f.readlines()
-
-    # Extract key-value pairs from the content
-    data_list = []
-    for line in lines:
-        key, value = line.split(',')
-        data_list.append({"id": key.strip(), "value": value.strip()})
-
-    # Convert the list of key-value pairs to a YAML formatted string
-    yaml_string = yaml.dump(data_list, default_flow_style=False)
-    
-    return yaml_string
-
-# Example usage
-filename = 'sample.txt'
-print(text_to_yaml(filename))
+# Output the resulting JSON object
+echo $json_result
