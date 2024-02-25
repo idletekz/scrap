@@ -1,42 +1,62 @@
-#!/bin/bash
+import requests
 
-# Function to clone a GitHub PR into a new temporary directory, with support for private repositories
-clone_github_pr() {
-  # Check if the correct number of arguments is passed
-  if [ "$#" -ne 3 ]; then
-    echo "Usage: clone_github_pr <repo_url> <pr_number> <pat_token>"
-    return 1
-  fi
+def find_comment_id(comments_url, identifier, headers):
+    """
+    Find the comment ID for the existing test results comment.
 
-  # Extract arguments
-  local repo_url="$1"
-  local pr_number="$2"
-  local pat_token="$3"
+    :param comments_url: GitHub API URL for the pull request comments
+    :param identifier: Unique identifier to search for in the comments
+    :param headers: Headers to use for the GitHub API request
+    :return: The ID of the found comment or None
+    """
+    response = requests.get(comments_url, headers=headers)
+    if response.status_code == 200:
+        comments = response.json()
+        for comment in comments:
+            if identifier in comment['body']:
+                return comment['id']
+    return None
 
-  # Create a new temporary directory
-  local tmp_dir=$(mktemp -d -t pr-clone-XXXXXX)
-  echo "Created temporary directory $tmp_dir"
+def post_or_update_comment(repo, pr_id, report_file_path, github_token, identifier):
+    """
+    Post a new comment or update an existing one with pytest results.
 
-  # Navigate to the temporary directory
-  cd "$tmp_dir"
+    :param repo: Repository name in the format 'owner/repo'
+    :param pr_id: Pull Request ID (number)
+    :param report_file_path: Path to the file containing the pytest results
+    :param github_token: GitHub Personal Access Token for authentication
+    :param identifier: Unique identifier to mark the comment for later updates
+    """
+    comments_url = f"https://api.github.com/repos/{repo}/issues/{pr_id}/comments"
+    headers = {'Authorization': f'token {github_token}'}
+    
+    comment_id = find_comment_id(comments_url, identifier, headers)
+    
+    with open(report_file_path, 'r') as file:
+        report_content = file.read()
+    
+    comment_body = {
+        "body": f"### Pytest Results\n```\n{report_content}\n```\n\n<!-- {identifier} -->"
+    }
+    
+    if comment_id:
+        # Update existing comment
+        update_url = f"{comments_url}/{comment_id}"
+        response = requests.patch(update_url, json=comment_body, headers=headers)
+    else:
+        # Post new comment
+        response = requests.post(comments_url, json=comment_body, headers=headers)
+    
+    if response.status_code in [200, 201]:
+        print("Comment posted or updated successfully.")
+    else:
+        print(f"Failed to post or update comment. Status code: {response.status_code}, Response: {response.text}")
 
-  # Initialize a new git repository
-  git init &> /dev/null
+# Usage
+repo = 'your_username/your_repo'
+pr_id = 'PR_NUMBER'
+report_file_path = 'pytest_results.txt'
+github_token = 'YOUR_GITHUB_TOKEN'
+identifier = 'unique_test_results_identifier'  # This should be a unique phrase or keyword.
 
-  # Modify the repository URL to include the PAT for authentication
-  local auth_repo_url=$(echo "$repo_url" | sed "s://:://$pat_token@:")
-
-  # Add the original repository as a remote with authentication
-  git remote add origin "$auth_repo_url"
-
-  # Fetch the PR
-  git fetch origin pull/"$pr_number"/head:pr-"$pr_number" &> /dev/null
-
-  # Checkout the PR
-  git checkout pr-"$pr_number" &> /dev/null
-
-  echo "PR #$pr_number from $repo_url has been cloned into $tmp_dir"
-}
-
-# Example usage (Do not hardcode your PAT in the script or use it directly in the command line to avoid exposure)
-# clone_github_pr https://github.com/example/repo.git 123 your_pat_token_here
+post_or_update_comment(repo, pr_id, report_file_path, github_token, identifier)
