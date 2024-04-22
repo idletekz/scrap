@@ -1,17 +1,8 @@
-set -euo pipefail
-
-info() {
-  printf "\r\033[00;35m$1\033[0m\n"
-}
-
-success() {
-  printf "\r\033[00;32m$1\033[0m\n"
-}
-
-fail() {
-  printf "\r\033[0;31m$1\033[0m\n"
-}
-
-divider() {
-  printf "\r\033[0;1m========================================================================\033[0m\n"
-}
+-XX:NewRatio=1
+This option sets the ratio between the young and old generation in the heap. The NewRatio specifies the size of the old generation relative to the new generation. For example, -XX:NewRatio=1 means that the size of the old generation is equal to the size of the new generation. If the total heap size is 2 GB, then the old generation and new generation will each be 1 GB.
+-XX:SurvivorRatio=9
+This setting is used to manage the size of the survivor spaces in the young generation. The young generation in Java's heap is divided into one Eden space and two Survivor spaces (S0 and S1). The SurvivorRatio determines the size of each survivor space relative to the Eden space. A SurvivorRatio of 9 means that each Survivor space is 1/10th the size of the Eden space. If the young generation is 1 GB and the SurvivorRatio is 9, then each survivor space would be approximately 0.1 GB, and the Eden space would be about 0.8 GB.
+-XX:MinHeapFreeRatio=2
+This option specifies the minimum percentage of heap free space after a garbage collection. If the free space falls below this percentage, the JVM will increase the heap size. The MinHeapFreeRatio of 2% means that the JVM will attempt to maintain at least 2% of the heap as free space. If the free space drops below this threshold, the JVM will expand the heap if it's not already at its maximum size.
+-XX:MaxHeapFreeRatio=10
+Similar to the MinHeapFreeRatio, this setting determines the maximum percentage of heap that should be free. If the free space exceeds this percentage after garbage collection, the JVM will reduce the heap size to save resources. A MaxHeapFreeRatio of 10% means that if more than 10% of the heap is free, the JVM may decrease the size of the heap, assuming the heap is above its minimum size.
