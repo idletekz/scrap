@@ -1,51 +1,40 @@
-import subprocess
-import json
+import requests
 
-def run_command(command):
-    """Run a shell command and return the output"""
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
-    if result.returncode != 0:
-        raise Exception(f"Error executing command: {command}\nError: {result.stderr}")
-    return result.stdout
+def check_files_in_docs_directory(files_url, headers):
+    response = requests.get(files_url, headers=headers)
+    files = response.json()
+    return all(file['filename'].startswith('docs/') for file in files)
 
-def get_user_provided_env_vars(app_name):
-    """Retrieve user-provided environment variables for the given application"""
-    command = f"cf env {app_name}"
-    output = run_command(command)
-    env_vars = []
-    recording = False
-    for line in output.splitlines():
-        if line.strip() == "User-Provided:":
-            recording = True
-            continue
-        if recording:
-            if ":" in line:
-                var_name = line.split(":", 1)[0].strip()
-                env_vars.append(var_name)
-                continue
-            break
-    return env_vars
+def approve_pull_request(repo_owner, repo_name, pr_number, github_token):
+    # Define the URL for the pull request files and the review endpoint
+    files_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/pulls/{pr_number}/files"
+    review_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/pulls/{pr_number}/reviews"
 
-def unset_environment_variables(app_name):
-    """Unset all user-provided environment variables for the application"""
-    env_vars = get_user_provided_env_vars(app_name)
-    for var in env_vars:
-        command = f"cf unset-env {app_name} {var}"
-        print(f"Unsetting variable {var}...")
-        run_command(command)
-    print("All user-provided environment variables have been unset.")
+    # Set up headers for Authorization
+    headers = {
+        'Authorization': f'token {github_token}',
+        'Accept': 'application/vnd.github.v3+json'
+    }
 
-def restage_application(app_name):
-    """Restage the application to apply environment changes"""
-    command = f"cf restage {app_name}"
-    print("Restaging application...")
-    run_command(command)
-    print("Application restaged.")
+    # Check if all files are within the docs directory
+    if check_files_in_docs_directory(files_url, headers):
+        # Data for approving the pull request
+        data = {
+            'event': 'APPROVE',
+            'body': 'Auto-approved since changes are confined to docs directory.'
+        }
+        response = requests.post(review_url, headers=headers, json=data)
+        if response.status_code == 201:
+            print("Pull request approved.")
+        else:
+            print("Failed to approve pull request:", response.json())
+    else:
+        print("Pull request contains changes outside the 'docs' directory.")
 
-if __name__ == "__main__":
-    APP_NAME = "your_app_name"  # Replace with your actual app name
-    try:
-        unset_environment_variables(APP_NAME)
-        restage_application(APP_NAME)
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")
+# Variables you need to set
+repo_owner = 'your_repo_owner'
+repo_name = 'your_repo_name'
+pr_number = 1  # Pull request number
+github_token = 'your_github_token'
+
+approve_pull_request(repo_owner, repo_name, pr_number, github_token)
