@@ -1,40 +1,54 @@
 import requests
 
-def check_files_in_docs_directory(files_url, headers):
-    response = requests.get(files_url, headers=headers)
-    files = response.json()
-    return all(file['filename'].startswith('docs/') for file in files)
+# Replace these with your actual values
+token = 'YOUR_GITHUB_TOKEN'
+owner = 'OWNER'
+repo = 'REPO'
+pr_number = 'PR_NUMBER'
 
-def approve_pull_request(repo_owner, repo_name, pr_number, github_token):
-    # Define the URL for the pull request files and the review endpoint
-    files_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/pulls/{pr_number}/files"
-    review_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/pulls/{pr_number}/reviews"
+url = f'https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/reviews'
+headers = {
+    'Accept': 'application/vnd.github.v3+json',
+    'Authorization': f'token {token}',
+}
 
-    # Set up headers for Authorization
-    headers = {
-        'Authorization': f'token {github_token}',
-        'Accept': 'application/vnd.github.v3+json'
-    }
+response = requests.get(url, headers=headers)
+reviews = response.json()
 
-    # Check if all files are within the docs directory
-    if check_files_in_docs_directory(files_url, headers):
-        # Data for approving the pull request
-        data = {
-            'event': 'APPROVE',
-            'body': 'Auto-approved since changes are confined to docs directory.'
-        }
-        response = requests.post(review_url, headers=headers, json=data)
-        if response.status_code == 201:
-            print("Pull request approved.")
-        else:
-            print("Failed to approve pull request:", response.json())
-    else:
-        print("Pull request contains changes outside the 'docs' directory.")
+approved_reviews = [review for review in reviews if review['state'] == 'APPROVED']
 
-# Variables you need to set
-repo_owner = 'your_repo_owner'
-repo_name = 'your_repo_name'
-pr_number = 1  # Pull request number
-github_token = 'your_github_token'
+if approved_reviews:
+    print(f'The pull request #{pr_number} has been approved.')
+else:
+    print(f'The pull request #{pr_number} has not been approved.')
 
-approve_pull_request(repo_owner, repo_name, pr_number, github_token)
+--- 
+# rebase
+import requests
+
+# Replace these with your actual values
+token = 'YOUR_GITHUB_TOKEN'
+owner = 'OWNER'
+repo = 'REPO'
+pr_number = 'PR_NUMBER'
+
+# GitHub API URL for merging a pull request
+merge_url = f'https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/merge'
+
+headers = {
+    'Accept': 'application/vnd.github.v3+json',
+    'Authorization': f'token {token}',
+}
+
+# Payload for the merge request
+payload = {
+    'merge_method': 'rebase'
+}
+
+# Make the request to merge the pull request
+response = requests.put(merge_url, headers=headers, json=payload)
+
+if response.status_code == 200:
+    print(f'Successfully rebased and merged PR #{pr_number}')
+else:
+    print(f'Failed to rebase and merge PR #{pr_number}: {response.json()}')
