@@ -1,7 +1,16 @@
 {
+  "[python]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4
+  },
   "vim.leader": "<Space>",
   "editor.tabSize": 2,
   "go.toolsManagement.autoUpdate": true,
+  "[go]": {
+    "editor.insertSpaces": true,
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "golang.go"
+  },
   "gopls": {
     "ui.semanticTokens": true
   },
@@ -43,22 +52,41 @@
         "J"
       ]
     },
-    //    {
-    //      "before": ["d"],
-    //      "after": [ "\"", "_", "d" ]
-    //    },
+    // black hole register
     {
       "before": [
-        "<C-s>"
+        "<Leader>",
+        "d"
       ],
-      "commands": [
-        {
-          "command": "workbench.action.files.save"
-        },
-        {
-          "command": "extension.vim_escape"
-        }
+      "after": [
+        "\"",
+        "_",
+        "d"
       ]
+    },
+    {
+      "before": [
+        "<C-u>"
+      ],
+      "after": [
+        "2",
+        "0",
+        "k",
+        "z",
+        "z"
+      ],
+    },
+    {
+      "before": [
+        "<C-d>"
+      ],
+      "after": [
+        "2",
+        "0",
+        "j",
+        "z",
+        "z"
+      ],
     },
   ],
   "vim.insertModeKeyBindings": [
@@ -82,23 +110,10 @@
         "<ESC>"
       ]
     },
-    {
-      "before": [
-        "<C-s>"
-      ],
-      "commands": [
-        {
-          "command": "workbench.action.files.save"
-        },
-        {
-          "command": "extension.vim_escape"
-        }
-      ]
-    },
   ],
   "vim.useSystemClipboard": false,
   "vim.foldfix": true,
-  //"workbench.colorTheme": "Nord",
+  "workbench.colorTheme": "Nord",
   "vim.sneak": false,
   "telemetry.telemetryLevel": "off",
   "explorer.confirmDelete": false,
@@ -106,14 +121,47 @@
   "editor.formatOnSave": true,
   "editor.formatOnSaveMode": "file",
   "[terraform]": {
-    "editor.defaultFormatter": "hashicorp.terraform",
+    // "editor.defaultFormatter": "hashicorp.terraform",
     "editor.formatOnSave": true,
   },
   "vim.handleKeys": {
     "<C-d>": true,
-    "<C-s>": true,
-    "<C-z>": false
+    "<C-s>": false,
+    "<C-z>": false,
+    "<C-p>": false,
+    "<C-k>": false,
   },
   "vim.showMarksInGutter": true,
   "security.workspace.trust.untrustedFiles": "open",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell",
+      "icon": "terminal-powershell"
+    },
+    "Command Prompt": {
+      "path": [
+        "${env:windir}\\Sysnative\\cmd.exe",
+        "${env:windir}\\System32\\cmd.exe"
+      ],
+      "args": [],
+      "icon": "terminal-cmd"
+    },
+    "Git Bash": {
+      "source": "Git Bash"
+    },
+    "Ubuntu (WSL)": {
+      "path": "C:\\WINDOWS\\System32\\wsl.exe",
+      "args": [
+        "-d",
+        "Ubuntu"
+      ]
+    }
+  },
+  "terminal.integrated.defaultProfile.windows": "Ubuntu (WSL)",
+  "terminal.integrated.autoReplies": {},
+  "editor.lineNumbers": "relative",
+  "window.density.editorTabHeight": "compact",
+  "workbench.editor.pinnedTabsOnSeparateRow": true,
+  "editor.renderWhitespace": "none",
+  "terminal.integrated.allowChords": false,
 }
