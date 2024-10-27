@@ -18,3 +18,15 @@ spec:
               kubectl patch serviceaccount <service-account-name> -n {{ .Release.Namespace }} 
               -p '{"metadata": {"annotations": {"your.annotation/key": "your-value"}}}'
       restartPolicy: Never
+
+---
+# curl in pod
+TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+SERVICE_ACCOUNT_NAME=<service-account-name>
+
+curl -X PATCH \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/merge-patch+json" \
+  --data '{"metadata": {"annotations": {"your.annotation/key": "your-value"}}}' \
+  https://kubernetes.default.svc/api/v1/namespaces/$NAMESPACE/serviceaccounts/$SERVICE_ACCOUNT_NAME
