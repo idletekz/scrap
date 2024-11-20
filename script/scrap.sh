@@ -1,3 +1,34 @@
+#!/bin/bash
+
+# Define release name and chart
+RELEASE_NAME="my-release"
+CHART_NAME="my-chart"
+
+# Check if the release exists and is in a FAILED state
+FAILED_RELEASE=$(helm list --filter "^${RELEASE_NAME}$" --output json | jq -r '.[] | select(.status == "failed") | .name')
+
+if [ "$FAILED_RELEASE" == "$RELEASE_NAME" ]; then
+    echo "Previous release '${RELEASE_NAME}' is in FAILED state. Uninstalling..."
+    helm uninstall "$RELEASE_NAME"
+    if [ $? -ne 0 ]; then
+        echo "Failed to uninstall the failed release. Exiting."
+        exit 1
+    fi
+else
+    echo "No failed release detected. Proceeding with installation."
+fi
+
+# Attempt to install the Helm chart
+helm install "$RELEASE_NAME" "$CHART_NAME"
+
+# Check if the Helm install command was successful
+if [ $? -ne 0 ]; then
+    echo "Helm install failed. Exiting."
+    exit 1
+else
+    echo "Helm install succeeded!"
+fi
+
 # Function to check the status of the custom resources (CR) for a given CRD in a specific namespace
 check_custom_resource_status_in_namespace() {
   local crd_name=$1
