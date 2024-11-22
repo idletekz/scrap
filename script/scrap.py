@@ -54,8 +54,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: redis-service
-  annotations:
-    cloud.google.com/load-balancer-type: "External"
 spec:
   selector:
     app: redis
@@ -63,5 +61,5 @@ spec:
   - protocol: TCP
     port: 6379
     targetPort: 6379
-  type: LoadBalancer
+  type: clusterIP
 
