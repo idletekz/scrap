@@ -1,65 +1,34 @@
-apiVersion: v1
-kind: Secret
-metadata:
-  name: redis-password
-type: Opaque
-data:
-  redis-password: xxx
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: redis-deployment
-  labels:
-    app: redis
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: redis
-  template:
-    metadata:
-      labels:
-        app: redis
-    spec:
-      containers:
-      - name: redis
-        image: redis:7.2.4
-        ports:
-        - containerPort: 6379
-        resources:
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
-          requests:
-            memory: "128Mi"
-            cpu: "250m"
-        env:
-        - name: REDIS_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: redis-password
-              key: redis-password
-        command: ["redis-server"]
-        args:
-        - "--requirepass"
-        - "$(REDIS_PASSWORD)"
-        - "--maxmemory"
-        - "2gb"
-        - "--maxmemory-policy"
-        - "allkeys-lru"
----
+import redis
+import sys
 
-apiVersion: v1
-kind: Service
-metadata:
-  name: redis-service
-spec:
-  selector:
-    app: redis
-  ports:
-  - protocol: TCP
-    port: 6379
-    targetPort: 6379
-  type: clusterIP
+def set_key(host, port, password, key, value, timeout=60) -> tuple[str, str]:
+    try:
+        r = redis.Redis(host=host, port=port, password=password, decode_responses=True, socket_timeout=timeout)
+        # attempt to set key atomically if it does not exist
+        was_set = r.set(name=key, value=value, nx=True)
+        if was_set:
+            print(f"setting {key}:{value}")
+            return value, None
+        print(f"exist {key}: {value}")
+        return value, None
+    except redis.RedisError as e:
+        return None, e
 
+# redis_write
+if __name__ == "__main__":
+    if len(sys.argv) != 6:
+        print("usage: python redis_key.py <host> <port> <password> <key> <value>")
+        print(f"{len(sys.argv)}: {sys.argv}")
+        sys.exit(1)
+
+    redis_host = sys.argv[1]
+    redis_port = int(sys.argv[2])
+    redis_password = sys.argv[3]
+    redis_key = sys.argv[4]
+    redis_value = sys.argv[5]
+
+    data, err = set_key(redis_host, redis_port, redis_password, redis_key, redis_value)
+    if err:
+        print(f"error: {err}")
+        sys.exit(1)
+    print(data)
