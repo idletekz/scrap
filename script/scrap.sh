@@ -4,14 +4,8 @@ metadata:
   name: enforce-specific-namespace-if-defined
 spec:
   rules:
-    - name: Namespace must be defined
-      errorMessage: "Namespace must be defined and set to 'my-namespace'."
-      schemaValidation:
-        - path: "metadata.namespace"
-          condition: Exists
-
-    - name: Ensure namespace is 'my-namespace'
-      errorMessage: "Namespace must be set to 'my-namespace'."
+    - name: Ensure namespace is 'my-namespace' if defined
+      errorMessage: "Namespace must be set to 'my-namespace' if defined."
       schemaValidation:
         - path: "metadata.namespace"
           condition: Equals
