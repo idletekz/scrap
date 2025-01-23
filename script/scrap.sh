@@ -16,3 +16,8 @@ yq e '
   | .image
   | sub("^[^/]+/", "")
 ' multiple-resources.yaml
+
+yq e '
+  select(.metadata.namespace != null)
+  | .metadata.namespace
+' multiple-resources.yaml
