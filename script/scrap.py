@@ -1,57 +1,98 @@
+import sys
+import yaml
 import requests
+import socket
 
-def get_organizations(auth, proxies):
-    url = "https://example.com/api/organizations"
-    response = requests.get(url, headers=auth, proxies=proxies)
-    if response.status_code == 200:
-        return response.json()  # Assuming response is a JSON array
-    else:
-        raise Exception(f"Failed to fetch organizations: {response.status_code}")
+# default timeout in seconds
+default_timeout = 10
 
-def get_projects(org_identifier, auth, proxies):
-    url = f"https://example.com/api/organizations/{org_identifier}/projects"
-    page = 0
-    all_projects = []
-
-    while True:
-        params = {"page": page}
-        response = requests.get(url, headers=auth, proxies=proxies, params=params)
-        if response.status_code == 200:
-            projects = response.json()  # Assuming response is a JSON array
-            all_projects.extend(projects)
-
-            total_elements = int(response.headers.get("x-total-elements", 0))
-            page_size = int(response.headers.get("x-page-size", 0))
-
-            if len(all_projects) >= total_elements or page_size == 0:
-                break
-
-            page += 1
-        else:
-            raise Exception(f"Failed to fetch projects for org {org_identifier}: {response.status_code}")
-
-    return all_projects
-
-def collect_orgs_and_projects(auth, proxies):
-    final_result = {}
+def load_yaml(file_path):
     try:
-        orgs = get_organizations(auth, proxies)
-        for org in orgs:
-            org_identifier = org.get("org", {}).get("identifier")
-            if org_identifier:
-                projects = get_projects(org_identifier, auth, proxies)
-                project_identifiers = [project.get("identifier") for project in projects]
-                final_result[org_identifier] = project_identifiers
+        with open(file_path, 'r') as f:
+            return yaml.safe_load(f)
     except Exception as e:
-        print(f"Error occurred: {e}")
-    return final_result
+        print(f"error loading yaml file '{file_path}': {e}")
+        sys.exit(1)
+
+def verify_http_endpoint(endpoint, failed_endpoints):
+    name = endpoint.get("name", "unnamed http endpoint")
+    url = endpoint.get("url")
+    if not url:
+        print(f"[{name}] skipping: 'url' is missing for http endpoint.")
+        return
+    timeout = endpoint.get("timeout", default_timeout)
+    proxies = endpoint.get("proxies", {"http": None, "https": None})
+    print(f"[{name}] checking http url: {url}")
+    try:
+        response = requests.get(url, proxies=proxies, timeout=timeout)
+        print(f"[{name}] success: http {response.status_code}")
+    except requests.RequestException as e:
+        error_message = f"http connection error: {e}"
+        print(f"[{name}] {error_message}")
+        failed_endpoints.append({
+            "name": name,
+            "type": "http",
+            "endpoint": url,
+            "error": str(e)
+        })
+
+def verify_tcp_endpoint(endpoint, failed_endpoints):
+    name = endpoint.get("name", "unnamed tcp endpoint")
+    host = endpoint.get("host")
+    port = endpoint.get("port")
+    if not host or not port:
+        print(f"[{name}] skipping: 'host' or 'port' is missing for tcp endpoint.")
+        return
+    timeout = endpoint.get("timeout", default_timeout)
+    print(f"[{name}] checking tcp connection to {host}:{port}")
+    try:
+        with socket.create_connection((host, port), timeout=timeout) as conn:
+            print(f"[{name}] successfully connected to {host}:{port}")
+    except Exception as e:
+        error_message = f"tcp connection error: {e}"
+        print(f"[{name}] {error_message}")
+        failed_endpoints.append({
+            "name": name,
+            "type": "tcp",
+            "endpoint": f"{host}:{port}",
+            "error": str(e)
+        })
+
+def verify_endpoint(endpoint, failed_endpoints):
+    if "url" in endpoint:
+        verify_http_endpoint(endpoint, failed_endpoints)
+        return
+    if "host" in endpoint:
+        verify_tcp_endpoint(endpoint, failed_endpoints)
+        return
+    name = endpoint.get("name", "unnamed endpoint")
+    print(f"[{name}] no valid connectivity key ('url' or 'host') found. skipping.")
+
+def main(yaml_file_path):
+    data = load_yaml(yaml_file_path)
+
+    endpoints = data.get("api_endpoints")
+    if not endpoints:
+        print("no 'api_endpoints' key found in the yaml file or the list is empty.")
+        sys.exit(1)
+
+    # List to collect endpoints that fail connectivity tests
+    failed_endpoints = []
+
+    for endpoint in endpoints:
+        verify_endpoint(endpoint, failed_endpoints)
+
+    if not failed_endpoints:
+        print("\nall endpoints connected successfully!")
+    print("\nfailed connectivity endpoints:")
+    for fail in failed_endpoints:
+        print(f" - [{fail['type']}] {fail['name']} ({fail['endpoint']}): {fail['error']}")
 
 if __name__ == "__main__":
-    # Replace with actual authentication headers and proxies
-    auth_headers = {"Authorization": "Bearer YOUR_ACCESS_TOKEN"}
-    proxies_config = {
-        "http": "http://proxy.example.com:8080",
-        "https": "http://proxy.example.com:8080"
-    }
-    result = collect_orgs_and_projects(auth_headers, proxies_config)
-    print(result)
+    if len(sys.argv) != 2:
+        print("usage: python verify_endpoints.py <path_to_yaml_file>")
+        sys.exit(1)
+
+    yaml_file_path = sys.argv[1]
+    main(yaml_file_path)
+
