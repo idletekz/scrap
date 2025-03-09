@@ -1,35 +1,71 @@
 apiVersion: v1
-kind: ConfigMap
+kind: Service
 metadata:
-  name: startup-script
-data:
-  entrypoint.sh: |
-    #!/bin/sh
-    set -e
-    echo "Copying executable to writable location..."
-    cp /app/my-executable /writable/my-executable
-    chmod +x /writable/my-executable
-    echo "Running the executable..."
-    exec /writable/my-executable
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: my-pod
+  name: helloworld
+  labels:
+    app: helloworld
+    service: helloworld
 spec:
-  containers:
-    - name: my-container
-      image: my-image
-      command: ["/bin/sh", "/scripts/entrypoint.sh"]
-      volumeMounts:
-        - name: scripts
-          mountPath: /scripts
-        - name: writable
-          mountPath: /writable
-  volumes:
-    - name: scripts
-      configMap:
-        name: startup-script
-        defaultMode: 0755
-    - name: writable
-      emptyDir: {}
+  ports:
+  - port: 5000
+    name: http
+  selector:
+    app: helloworld
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helloworld-v1
+  labels:
+    app: helloworld
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: helloworld
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: helloworld
+        version: v1
+    spec:
+      containers:
+      - name: helloworld
+        image: docker.io/istio/examples-helloworld-v1:1.0
+        resources:
+          requests:
+            cpu: "100m"
+        imagePullPolicy: IfNotPresent #Always
+        ports:
+        - containerPort: 5000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helloworld-v2
+  labels:
+    app: helloworld
+    version: v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: helloworld
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: helloworld
+        version: v2
+    spec:
+      containers:
+      - name: helloworld
+        image: docker.io/istio/examples-helloworld-v2:1.0
+        resources:
+          requests:
+            cpu: "100m"
+        imagePullPolicy: IfNotPresent #Always
+        ports:
+        - containerPort: 5000
