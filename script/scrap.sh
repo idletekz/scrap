@@ -1,71 +1,47 @@
-apiVersion: v1
-kind: Service
-metadata:
-  name: helloworld
-  labels:
-    app: helloworld
-    service: helloworld
-spec:
-  ports:
-  - port: 5000
-    name: http
-  selector:
-    app: helloworld
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: helloworld-v1
-  labels:
-    app: helloworld
-    version: v1
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: helloworld
-      version: v1
-  template:
-    metadata:
-      labels:
-        app: helloworld
-        version: v1
-    spec:
-      containers:
-      - name: helloworld
-        image: docker.io/istio/examples-helloworld-v1:1.0
-        resources:
-          requests:
-            cpu: "100m"
-        imagePullPolicy: IfNotPresent #Always
-        ports:
-        - containerPort: 5000
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: helloworld-v2
-  labels:
-    app: helloworld
-    version: v2
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: helloworld
-      version: v2
-  template:
-    metadata:
-      labels:
-        app: helloworld
-        version: v2
-    spec:
-      containers:
-      - name: helloworld
-        image: docker.io/istio/examples-helloworld-v2:1.0
-        resources:
-          requests:
-            cpu: "100m"
-        imagePullPolicy: IfNotPresent #Always
-        ports:
-        - containerPort: 5000
+#!/bin/bash
+
+# Ensure a PR number is provided
+if [ -z "$1" ]; then
+    echo "Usage: $0 <PR_NUMBER>"
+    exit 1
+fi
+
+# Get the directory where the script resides
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Construct YAML filename from PR number
+PR_NUMBER="$1"
+YAML_FILE="$SCRIPT_DIR/${PR_NUMBER}.yml"
+
+# Check if YAML file exists
+if [ ! -f "$YAML_FILE" ]; then
+    echo "Error: YAML file '$YAML_FILE' not found."
+    exit 1
+fi
+
+# Check if yq (a YAML processor) is installed
+if ! command -v yq &> /dev/null; then
+    echo "Error: 'yq' is required but not installed. Install it from https://github.com/mikefarah/yq."
+    exit 1
+fi
+
+# Extract file paths from YAML
+FILE_PATHS=$(yq e '.. | select(has("filepath")) | .filepath' "$YAML_FILE")
+
+# Check if file paths exist and print only missing ones
+MISSING_FILES=()
+while IFS= read -r filepath; do
+    if [ ! -e "$filepath" ]; then
+        MISSING_FILES+=("$filepath")
+    fi
+done <<< "$FILE_PATHS"
+
+# Print only missing file paths
+if [ ${#MISSING_FILES[@]} -eq 0 ]; then
+    echo "All files exist."
+else
+    echo "Missing file paths:"
+    for file in "${MISSING_FILES[@]}"; do
+        echo "$file"
+    done
+fi
