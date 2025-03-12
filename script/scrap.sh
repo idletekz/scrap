@@ -13,6 +13,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PR_NUMBER="$1"
 YAML_FILE="$SCRIPT_DIR/${PR_NUMBER}.yml"
 
+# Allowed root keys
+ALLOWED_KEYS=("filestore_folder_root" "filestore_folder_sub1" "filestore_folder_sub2" "filestore_file")
+
 # Check if YAML file exists
 if [ ! -f "$YAML_FILE" ]; then
     echo "Error: YAML file '$YAML_FILE' not found."
@@ -25,8 +28,19 @@ if ! command -v yq &> /dev/null; then
     exit 1
 fi
 
-# Extract file paths from YAML
-FILE_PATHS=$(yq e '.. | select(has("filepath")) | .filepath' "$YAML_FILE")
+# Extract root keys from YAML
+ROOT_KEYS=($(yq e 'keys | .[]' "$YAML_FILE"))
+
+# Check if there are any unexpected keys
+for key in "${ROOT_KEYS[@]}"; do
+    if [[ ! " ${ALLOWED_KEYS[*]} " =~ " $key " ]]; then
+        echo "Error: Invalid key '$key' found in YAML. Allowed keys are: ${ALLOWED_KEYS[*]}"
+        exit 1
+    fi
+done
+
+# Extract file paths from the allowed keys
+FILE_PATHS=$(yq e '.[] | select(has("filepath")) | .filepath' "$YAML_FILE")
 
 # Check if file paths exist and print only missing ones
 MISSING_FILES=()
