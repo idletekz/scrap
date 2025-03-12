@@ -31,18 +31,18 @@ fi
 # Extract root keys from YAML
 ROOT_KEYS=($(yq e 'keys | .[]' "$YAML_FILE"))
 
-# Check if there are any unexpected keys
+# Find non-allowed keys
+NON_ALLOWED_KEYS=()
 for key in "${ROOT_KEYS[@]}"; do
     if [[ ! " ${ALLOWED_KEYS[*]} " =~ " $key " ]]; then
-        echo "Error: Invalid key '$key' found in YAML. Allowed keys are: ${ALLOWED_KEYS[*]}"
-        exit 1
+        NON_ALLOWED_KEYS+=("$key")
     fi
 done
 
-# Extract file paths from the allowed keys
+# Extract file paths from allowed keys
 FILE_PATHS=$(yq e '.[] | select(has("filepath")) | .filepath' "$YAML_FILE")
 
-# Check if file paths exist and print only missing ones
+# Check if file paths exist and collect missing ones
 MISSING_FILES=()
 while IFS= read -r filepath; do
     if [ ! -e "$filepath" ]; then
@@ -50,12 +50,8 @@ while IFS= read -r filepath; do
     fi
 done <<< "$FILE_PATHS"
 
-# Print only missing file paths
-if [ ${#MISSING_FILES[@]} -eq 0 ]; then
-    echo "All files exist."
-else
-    echo "Missing file paths:"
-    for file in "${MISSING_FILES[@]}"; do
-        echo "$file"
-    done
-fi
+# Output results
+if [ ${#NON_ALLOWED_KEYS[@]} -gt 0 ]; then
+    echo "Non-allowed keys found in YAML:"
+    for key in "${NON_ALLOWED_KEYS[@]}"; do
+        echo "- $key
