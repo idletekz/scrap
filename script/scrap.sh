@@ -7,6 +7,17 @@ DEPLOYMENTS_JSON_BASE64=$(yq eval -o=json '
 
 echo "$DEPLOYMENTS_JSON_BASE64" | base64 -d | jq
 
+# jq -c '.[]' extracts each object from the JSON array as a single-line JSON string
+# while read -r deployment reads each JSON object one by one.
+# The -r flag prevents backslash escapes (\) from being interpreted. This ensures JSON remains intact.
+
+# Decode the Base64-encoded JSON and iterate over each deployment
+echo "$DEPLOYMENTS_JSON_BASE64" | base64 -d | jq -c '.[]' | while read -r deployment; do
+  name=$(echo "$deployment" | jq -r '.Deployment')
+  replicas=$(echo "$deployment" | jq -r '.Replicas')
+  echo "Deployment Name: $name, Replicas: $replicas"
+done
+
 # Ensure a PR number is provided
 if [ -z "$1" ]; then
     echo "Usage: $0 <PR_NUMBER>"
