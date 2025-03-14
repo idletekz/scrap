@@ -7,6 +7,8 @@ DEPLOYMENTS_JSON_BASE64=$(yq eval -o=json '
 
 echo "$DEPLOYMENTS_JSON_BASE64" | base64 -d | jq
 
+# The -c (compact output) flag in jq outputs each JSON object as a single line. 
+# This is important when processing JSON in while read, because it ensures that each JSON object is properly passed to the loop
 # jq -c '.[]' extracts each object from the JSON array as a single-line JSON string
 # while read -r deployment reads each JSON object one by one.
 # The -r flag prevents backslash escapes (\) from being interpreted. This ensures JSON remains intact.
