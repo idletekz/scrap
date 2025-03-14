@@ -1,5 +1,12 @@
 #!/bin/bash
 
+DEPLOYMENTS_JSON_BASE64=$(yq eval -o=json '
+  [ (.) | select(.kind == "Deployment") | 
+  {"Deployment": .metadata.name, "Replicas": .spec.replicas} ]
+' manifest.yaml | jq -s add | base64 -w 0)
+
+echo "$DEPLOYMENTS_JSON_BASE64" | base64 -d | jq
+
 # Ensure a PR number is provided
 if [ -z "$1" ]; then
     echo "Usage: $0 <PR_NUMBER>"
