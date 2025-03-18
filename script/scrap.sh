@@ -1,4 +1,5 @@
 #!/bin/bash
+https://learn.kodekloud.com/user/courses/json-path-test-free-course
 
 DEPLOYMENTS_JSON_BASE64=$(yq eval -o=json '
   [ (.) | select(.kind == "Deployment") | 
