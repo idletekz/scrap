@@ -1,1 +1,1 @@
-^\s*(key|certificate):\s*\|\n)(.*?\n)*?^\s*-----END (PRIVATE KEY|CERTIFICATE)-----$
+^\s*(key|certificate):\s*\|\n(?:\s+.*\n)*?^\s*-----END (PRIVATE KEY|CERTIFICATE)-----$
