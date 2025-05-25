@@ -1,67 +1,73 @@
-cleanup_old_files_by_sample() {
-  local dir="${1:-.}"
-  local filename="${2:-}"
-  local cache="${3:-3}"
+#!/bin/bash
+set -euo pipefail
 
-  # Validate input
-  if [[ -z "$filename" ]]; then
-    echo "[ERROR] Filename must be provided." >&2
-    return 1
-  fi
+# === Config ===
+SSH_KEY="/path/to/sshkey.pem"
+SRC_FILE="/target/path/file"
+DEST_DIR="/target/path"
+USER="user"
+PRIMARY_HOST="hostA"
+HOSTS=("hostB" "hostC" "hostD" "hostE" "hostF" "hostG")
 
-  if [[ ! -d "$dir" ]]; then
-    echo "[ERROR] Directory '$dir' does not exist." >&2
-    return 1
-  fi
+MAX_PARALLEL=5
+pids=()
+hostnames=()
 
-  if ! [[ "$cache" =~ ^[0-9]+$ ]]; then
-    echo "[ERROR] Cache value must be a positive integer." >&2
-    return 1
-  fi
+# === Pre-check ===
+command -v rsync >/dev/null || { echo "[ERROR] rsync not found"; exit 1; }
+command -v ssh >/dev/null || { echo "[ERROR] ssh not found"; exit 1; }
 
-  if (( cache < 1 )); then
-    echo "[WARN] Forcing minimum cache to 1."
-    cache=1
-  fi
-
-  # Extract prefix from filename (up to first '-' or '.')
-  local prefix="${filename%%[-.]*}"
-  if [[ -z "$prefix" ]]; then
-    echo "[ERROR] Failed to extract prefix from '$filename'" >&2
-    return 1
-  fi
-
-  local pattern="${prefix}*"
-  echo "[INFO] Matching files in '$dir' with pattern '$pattern' (prefix: '$prefix')"
-
-  # Find and sort files by modified time (newest first)
-  local file_list
-  file_list=$(find "$dir" -maxdepth 1 -type f -name "$pattern" -printf "%T@ %p\n" 2>/dev/null | sort -nr)
-
-  if [[ -z "$file_list" ]]; then
-    echo "[INFO] No matching files found."
-    return 0
-  fi
-
-  local total_files
-  total_files=$(echo "$file_list" | wc -l)
-
-  if (( total_files <= cache )); then
-    echo "[INFO] $total_files file(s) found. Nothing to delete (cache: $cache)."
-    return 0
-  fi
-
-  local files_to_delete
-  files_to_delete=$(echo "$file_list" | tail -n +$((cache + 1)) | awk '{print $2}')
-
-  echo "[INFO] Deleting $((total_files - cache)) old file(s):"
-  echo "$files_to_delete"
-
-  while IFS= read -r file; do
-    if rm -f -- "$file"; then
-      echo "[INFO] Deleted '$file'"
+# === Rsync replication in parallel with limit ===
+for host in "${HOSTS[@]}"; do
+  {
+    echo "[INFO] Starting rsync to $host..."
+    if output=$(rsync -azvc -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=no" "$SRC_FILE" "$USER@$host:$DEST_DIR" 2>&1); then
+      echo "[SUCCESS] Rsync to $host completed."
+      echo "$output"
     else
-      echo "[ERROR] Failed to delete '$file'" >&2
+      echo "[ERROR] Rsync to $host failed!" >&2
+      echo "$output" >&2
+      return 1  # This will fail inside the subshell but is detected via wait later
     fi
-  done <<< "$files_to_delete"
-}
+  } &
+
+  pid=$!
+  echo "[DEBUG] Started rsync to $host with PID $pid"
+  pids+=("$pid")
+  hostnames+=("$host")
+
+  # === Limit concurrent background jobs ===
+  if (( ${#pids[@]} >= MAX_PARALLEL )); then
+    echo "[DEBUG] Max parallel ($MAX_PARALLEL) reached. Waiting for a job to finish..."
+
+    if wait -n 2>/dev/null; then
+      echo "[DEBUG] A background job finished (using wait -n)."
+    else
+      echo "[DEBUG] Bash < 5 detected. Waiting for oldest PID: ${pids[0]} (host: ${hostnames[0]})"
+      wait "${pids[0]}"
+      echo "[DEBUG] Finished waiting on PID: ${pids[0]} (host: ${hostnames[0]})"
+      unset 'pids[0]'
+      unset 'hostnames[0]'
+      pids=("${pids[@]}")           # reindex array
+      hostnames=("${hostnames[@]}") # reindex array
+    fi
+  fi
+done
+
+# === Wait for remaining jobs ===
+fail=0
+for i in "${!pids[@]}"; do
+  pid=${pids[i]}
+  host=${hostnames[i]}
+  if ! wait "$pid"; then
+    echo "[ERROR] Rsync task failed (PID $pid, host $host)." >&2
+    fail=1
+  fi
+done
+
+if [[ $fail -ne 0 ]]; then
+  echo "[FATAL] One or more rsync tasks failed." >&2
+  exit 1
+fi
+
+echo "[INFO] All rsync tasks completed successfully."
